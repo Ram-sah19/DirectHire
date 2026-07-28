@@ -1,14 +1,32 @@
 require('dotenv').config();
 const dns = require('node:dns');
+const axios = require('axios');
+
+// Monkey-patch Node's DNS SRV resolver to bypass Windows local router DNS SRV blocking
+const originalResolveSrv = dns.promises.resolveSrv;
+dns.promises.resolveSrv = async function (hostname) {
+  try {
+    const srvUrl = `https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=SRV`;
+    const res = await axios.get(srvUrl, { timeout: 5000 });
+    if (res.data && res.data.Answer && res.data.Answer.length > 0) {
+      console.log(`[DNS PATCH] Resolved SRV for ${hostname} via Google DoH.`);
+      return res.data.Answer.map(item => {
+        const parts = item.data.split(' ');
+        return {
+          name: parts[3].replace(/\.$/, ''),
+          port: parseInt(parts[2], 10),
+          priority: parseInt(parts[0], 10),
+          weight: parseInt(parts[1], 10)
+        };
+      });
+    }
+  } catch (e) {
+    console.warn(`[DNS PATCH] Google DoH fallback failed:`, e.message);
+  }
+  return originalResolveSrv.call(dns.promises, hostname);
+};
+
 const mongoose = require('mongoose');
-
-// Bypass local DNS server SRV lookup failures by forcing public DNS
-try {
-  dns.setServers(['1.1.1.1', '8.8.8.8']);
-} catch (e) {
-  console.warn('[WORKER] Failed to override DNS servers:', e.message);
-}
-
 const Company = require('../../../backend/src/models/Company');
 const { scrapeGreenhouseJobs } = require('./pipeline');
 const { scrapeDebugWithShubhamJobs } = require('./scrapers/debugWithShubhamScraper');
@@ -22,17 +40,13 @@ async function run() {
 
   console.log('[WORKER] Connecting to database...');
   try {
-    await mongoose.connect(uri, { family: 4 });
-    console.log('[WORKER] Database connection successful.');
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 20000,
+      connectTimeoutMS: 20000
+    });
+    console.log('[WORKER] Database connection active and ready.');
 
-    // 1. Scrape curated portal debugwithshubham.com/jobs
-    try {
-      await scrapeDebugWithShubhamJobs();
-    } catch (err) {
-      console.error('[WORKER ERROR] DebugWithShubham scraper failed:', err.message);
-    }
-
-    // 2. Seed comprehensive list of tech companies using Greenhouse ATS
+    // 1. Seed comprehensive list of tech companies using Greenhouse ATS
     const defaultCompanies = [
       { name: 'Figma', industry: 'Design & Software', careerPageUrl: 'https://www.figma.com/careers/', atsType: 'greenhouse', boardToken: 'figma' },
       { name: 'Flexport', industry: 'Logistics Tech', careerPageUrl: 'https://www.flexport.com/careers/', atsType: 'greenhouse', boardToken: 'flexport' },
@@ -46,15 +60,26 @@ async function run() {
     ];
 
     for (const comp of defaultCompanies) {
-      await Company.findOneAndUpdate(
-        { boardToken: comp.boardToken },
-        { $set: comp },
-        { upsert: true, new: true }
-      );
+      try {
+        await Company.findOneAndUpdate(
+          { boardToken: comp.boardToken },
+          { $set: comp },
+          { upsert: true, new: true }
+        );
+      } catch (err) {
+        console.warn(`[WORKER] Seed error for ${comp.name}:`, err.message);
+      }
     }
     console.log(`[WORKER] Seeding completed for ${defaultCompanies.length} tech companies.`);
 
-    // 3. Fetch all Greenhouse companies
+    // 2. Run DebugWithShubham Scraper
+    try {
+      await scrapeDebugWithShubhamJobs();
+    } catch (err) {
+      console.error('[WORKER ERROR] DebugWithShubham scraper failed:', err.message);
+    }
+
+    // 3. Fetch and scrape all Greenhouse company boards
     const companies = await Company.find({ atsType: 'greenhouse' });
     console.log(`[WORKER] Found ${companies.length} Greenhouse company boards to scrape.`);
 
