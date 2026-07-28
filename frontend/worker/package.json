@@ -1,0 +1,14 @@
+{
+  "name": "careerfetch-worker",
+  "version": "1.0.0",
+  "description": "Background Scraper Worker for CareerFetch",
+  "main": "src/run-scraper.js",
+  "scripts": {
+    "start": "node src/run-scraper.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "dotenv": "^16.4.5",
+    "mongoose": "^8.3.1"
+  }
+}
