@@ -6,6 +6,20 @@ export default function JobDetailModal({ job, onClose }) {
 
   const companyName = job.company ? job.company.name : 'Corporate Career Board';
 
+  const decodeHtml = (htmlStr = '') => {
+    if (!htmlStr) return '';
+    let txt = htmlStr;
+    if (txt.includes('&lt;') || txt.includes('&gt;')) {
+      txt = txt
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&');
+    }
+    return txt;
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end bg-[#060a18]/80 backdrop-blur-xl transition-opacity animate-in fade-in duration-200">
       
@@ -61,10 +75,10 @@ export default function JobDetailModal({ job, onClose }) {
         </div>
 
         {/* Description Body */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8 prose prose-invert max-w-none prose-sm leading-relaxed text-slate-300">
+        <div className="flex-1 overflow-y-auto p-6 md:p-8 text-slate-300 text-sm leading-relaxed space-y-4 [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-white [&_h3]:mt-6 [&_h3]:mb-2 [&_h4]:text-sm [&_h4]:font-semibold [&_h4]:text-slate-100 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:text-slate-300 [&_a]:text-indigo-400 [&_a]:underline hover:[&_a]:text-indigo-300">
           <div 
-            dangerouslySetInnerHTML={{ __html: job.description }} 
-            className="space-y-4"
+            dangerouslySetInnerHTML={{ __html: decodeHtml(job.description) }} 
+            className="space-y-3"
           />
         </div>
 

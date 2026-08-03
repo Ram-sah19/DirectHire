@@ -56,8 +56,44 @@ function generateJobHash(companyId, externalId) {
     .digest('hex');
 }
 
+/**
+ * Cleans and normalizes raw HTML job descriptions from ATS providers.
+ * Fixes invalid heading hierarchy (h1/h2 -> h3), cleans raw &nbsp; entities,
+ * and fixes invalid nested list structures.
+ * @param {string} rawHtml 
+ * @returns {string}
+ */
+function cleanJobDescription(rawHtml = '') {
+  if (!rawHtml) return '';
+  
+  let cleaned = rawHtml;
+
+  // Unescape entity-encoded HTML tags if present (e.g. &lt;p&gt; -> <p>)
+  if (cleaned.includes('&lt;') || cleaned.includes('&gt;')) {
+    cleaned = cleaned
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&amp;/gi, '&');
+  }
+
+  cleaned = cleaned
+    // Convert <h1> and <h2> inside description body to <h3> for correct hierarchy
+    .replace(/<h[12]([^>]*)>/gi, '<h3$1>')
+    .replace(/<\/h[12]>/gi, '</h3>')
+    // Replace non-breaking spaces with standard space
+    .replace(/&nbsp;/gi, ' ')
+    // Fix invalid direct <ul><ul> nesting
+    .replace(/<\/li>\s*<ul>/gi, '<ul>')
+    .trim();
+
+  return cleaned;
+}
+
 module.exports = {
   inferWorkplaceMode,
   normalizeLocation,
-  generateJobHash
+  generateJobHash,
+  cleanJobDescription
 };

@@ -1,6 +1,6 @@
 const axios = require('axios');
 const Job = require('../../../backend/src/models/Job');
-const { inferWorkplaceMode, normalizeLocation, generateJobHash } = require('./utils/normalizer');
+const { inferWorkplaceMode, normalizeLocation, generateJobHash, cleanJobDescription } = require('./utils/normalizer');
 
 /**
  * Fetches and aggregates jobs from a company's Greenhouse job board.
@@ -30,7 +30,8 @@ async function scrapeGreenhouseJobs(companyDoc) {
 
     for (const rawJob of externalJobs) {
       const normalizedLocation = normalizeLocation(rawJob.location);
-      const workplaceMode = inferWorkplaceMode(rawJob.title, normalizedLocation, rawJob.content);
+      const cleanedDescription = cleanJobDescription(rawJob.content || '');
+      const workplaceMode = inferWorkplaceMode(rawJob.title, normalizedLocation, cleanedDescription);
       const hash = generateJobHash(companyId.toString(), rawJob.id);
       
       activeJobHashes.push(hash);
@@ -39,7 +40,7 @@ async function scrapeGreenhouseJobs(companyDoc) {
       const jobData = {
         company: companyId,
         title: rawJob.title,
-        description: rawJob.content || '',
+        description: cleanedDescription,
         location: normalizedLocation,
         workplaceMode,
         rawApplicationUrl: rawJob.absolute_url,

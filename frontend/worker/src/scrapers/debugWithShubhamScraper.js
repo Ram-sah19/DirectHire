@@ -1,7 +1,7 @@
 const axios = require('axios');
 const Job = require('../../../../backend/src/models/Job');
 const Company = require('../../../../backend/src/models/Company');
-const { inferWorkplaceMode, normalizeLocation, generateJobHash } = require('../utils/normalizer');
+const { inferWorkplaceMode, normalizeLocation, generateJobHash, cleanJobDescription } = require('../utils/normalizer');
 
 /**
  * Scrapes curated tech job listings from debugwithshubham.com/jobs
@@ -105,12 +105,13 @@ async function scrapeDebugWithShubhamJobs() {
       const externalId = rawJob._id || rawJob.id || `${companyName}_${rawJob.title}`;
       const hash = generateJobHash(companyDoc._id.toString(), externalId);
       const normalizedLocation = normalizeLocation({ name: rawJob.location || 'India / Remote' });
-      const workplaceMode = inferWorkplaceMode(rawJob.title, normalizedLocation, rawJob.description || '');
+      const cleanedDescription = cleanJobDescription(rawJob.description || `<p>Verified listing from ${companyName}. Click direct apply to view requirements on official career site.</p>`);
+      const workplaceMode = inferWorkplaceMode(rawJob.title, normalizedLocation, cleanedDescription);
 
       const jobData = {
         company: companyDoc._id,
         title: rawJob.title || 'Software Engineering Role',
-        description: rawJob.description || `<p>Verified listing from ${companyName}. Click direct apply to view requirements on official career site.</p>`,
+        description: cleanedDescription,
         location: normalizedLocation,
         workplaceMode,
         rawApplicationUrl: rawJob.applyUrl || rawJob.link || targetUrl,
