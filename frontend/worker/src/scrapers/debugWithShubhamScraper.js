@@ -86,17 +86,21 @@ async function scrapeDebugWithShubhamJobs() {
     for (const rawJob of jobItems) {
       const companyName = rawJob.company || rawJob.companyName || 'Verified Corporate Board';
       
-      // Ensure company exists in MongoDB
-      let companyDoc = await Company.findOne({ name: companyName });
-      if (!companyDoc) {
-        companyDoc = await Company.create({
-          name: companyName,
-          industry: rawJob.industry || 'Technology & Software',
-          careerPageUrl: rawJob.applyUrl || rawJob.link || targetUrl,
-          atsType: 'other',
-          boardToken: companyName.toLowerCase().replace(/\s+/g, '-')
-        });
-      }
+      // Ensure company exists safely via findOneAndUpdate with upsert
+      const boardToken = companyName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+      let companyDoc = await Company.findOneAndUpdate(
+        { name: companyName },
+        { 
+          $setOnInsert: {
+            name: companyName,
+            industry: rawJob.industry || 'Technology & Software',
+            careerPageUrl: rawJob.applyUrl || rawJob.link || targetUrl,
+            atsType: 'other',
+            boardToken
+          }
+        },
+        { upsert: true, new: true }
+      );
 
       const externalId = rawJob._id || rawJob.id || `${companyName}_${rawJob.title}`;
       const hash = generateJobHash(companyDoc._id.toString(), externalId);
@@ -114,19 +118,19 @@ async function scrapeDebugWithShubhamJobs() {
         lastSeen: new Date()
       };
 
-      const result = await Job.findOneAndUpdate(
-        { jobHash: hash },
-        { 
-          $set: jobData,
-          $setOnInsert: { dateFetched: new Date(), jobHash: hash }
-        },
-        { upsert: true, new: true, includeResultMetadata: true }
-      );
-
-      const wasExisting = result.lastErrorObject && result.lastErrorObject.updatedExisting;
-      if (wasExisting) {
+      const existingJob = await Job.findOne({ jobHash: hash });
+      if (existingJob) {
+        await Job.updateOne(
+          { jobHash: hash },
+          { $set: jobData }
+        );
         updatedCount++;
       } else {
+        await Job.create({
+          ...jobData,
+          dateFetched: new Date(),
+          jobHash: hash
+        });
         insertedCount++;
       }
     }

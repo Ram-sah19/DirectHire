@@ -47,22 +47,19 @@ async function scrapeGreenhouseJobs(companyDoc) {
         lastSeen: new Date()
       };
 
-      // Find one and update. The rawResult option gives us metadata about update/insert
-      const result = await Job.findOneAndUpdate(
-        { jobHash: hash },
-        { 
-          $set: jobData,
-          $setOnInsert: { dateFetched: new Date(), jobHash: hash }
-        },
-        { upsert: true, new: true, includeResultMetadata: true }
-      );
-
-      // Mongoose 8 returned result shape holds `lastErrorObject` under result.lastErrorObject or result.value
-      // We can inspect result.lastErrorObject to check if it was an update or insert
-      const wasExisting = result.lastErrorObject && result.lastErrorObject.updatedExisting;
-      if (wasExisting) {
+      const existingJob = await Job.findOne({ jobHash: hash });
+      if (existingJob) {
+        await Job.updateOne(
+          { jobHash: hash },
+          { $set: jobData }
+        );
         updatedCount++;
       } else {
+        await Job.create({
+          ...jobData,
+          dateFetched: new Date(),
+          jobHash: hash
+        });
         insertedCount++;
       }
     }
