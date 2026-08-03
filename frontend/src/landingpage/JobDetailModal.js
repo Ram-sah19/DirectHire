@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ExternalLink, MapPin, Building2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { X, ExternalLink, MapPin, Building2, ShieldCheck } from 'lucide-react';
 
 export default function JobDetailModal({ job, onClose }) {
   if (!job) return null;

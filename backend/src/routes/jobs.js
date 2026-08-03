@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Job = require('../models/Job');
+const Company = require('../models/Company');
 
 /**
  * @route   GET /api/jobs

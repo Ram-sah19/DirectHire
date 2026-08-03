@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Navbar from './landingpage/Navbar';
 import HomePage from './landingpage/HomePage';
 import JobsPage from './landingpage/JobsPage';
 
@@ -66,13 +65,20 @@ function App() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalJobs, setTotalJobs] = useState(0);
 
-  const fetchJobs = useCallback(async () => {
+  const fetchJobs = useCallback(async (params = {}) => {
     setLoading(true);
+    const { page = currentPage, search = '', location = '', workplaceMode = '' } = params;
+    
     try {
-      const response = await fetch(`http://localhost:5000/api/jobs?page=${currentPage}&limit=12`);
+      let queryUrl = `http://localhost:5000/api/jobs?page=${page}&limit=12`;
+      if (search) queryUrl += `&search=${encodeURIComponent(search)}`;
+      if (location) queryUrl += `&location=${encodeURIComponent(location)}`;
+      if (workplaceMode) queryUrl += `&workplaceMode=${encodeURIComponent(workplaceMode)}`;
+
+      const response = await fetch(queryUrl);
       const data = await response.json();
 
-      if (data.success && data.jobs && data.jobs.length > 0) {
+      if (data.success && data.jobs) {
         setJobs(data.jobs);
         setTotalJobs(data.meta.totalJobs);
         setTotalPages(data.meta.totalPages);
@@ -82,6 +88,7 @@ function App() {
         setTotalPages(1);
       }
     } catch (err) {
+      console.warn('[FRONTEND] API call failed, using fallback mock jobs:', err.message);
       setJobs(MOCK_JOBS);
       setTotalJobs(MOCK_JOBS.length);
       setTotalPages(1);
@@ -91,8 +98,8 @@ function App() {
   }, [currentPage]);
 
   useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+    fetchJobs({ page: currentPage });
+  }, [currentPage, fetchJobs]);
 
   return (
     <div className="min-h-screen bg-[#060a18] text-white">
@@ -157,6 +164,7 @@ function App() {
           setCurrentPage={setCurrentPage}
           selectedJob={selectedJob}
           setSelectedJob={setSelectedJob}
+          onFetchJobs={fetchJobs}
         />
       )}
     </div>

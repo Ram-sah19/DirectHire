@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Search, MapPin, SlidersHorizontal, ChevronDown, Clock, ShieldCheck, ArrowRight, RotateCcw } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal } from 'lucide-react';
 import JobCard from './JobCard';
 import JobDetailModal from './JobDetailModal';
 
-export default function JobsPage({ jobs, loading, totalJobs, totalPages, currentPage, setCurrentPage, onSearch, onSelectJob, selectedJob, setSelectedJob }) {
+export default function JobsPage({ jobs, loading, totalJobs, totalPages, currentPage, setCurrentPage, onSearch, onSelectJob, selectedJob, setSelectedJob, onFetchJobs }) {
   const [activeTab, setActiveTab] = useState('Full Time'); // Full Time, Internship, Contract
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
@@ -23,6 +23,24 @@ export default function JobsPage({ jobs, loading, totalJobs, totalPages, current
     setExperienceRange('');
     setSalaryLimit(50);
   };
+
+  const triggerBackendQuery = React.useCallback(() => {
+    if (!onFetchJobs) return;
+    const activeModes = Object.keys(workplaceModes).filter(m => workplaceModes[m]).join(',');
+    onFetchJobs({
+      page: 1,
+      search: searchQuery,
+      location: locationQuery,
+      workplaceMode: activeModes
+    });
+  }, [searchQuery, locationQuery, workplaceModes, onFetchJobs]);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      triggerBackendQuery();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, locationQuery, workplaceModes, triggerBackendQuery]);
 
   return (
     <div className="relative min-h-screen w-full bg-gradient-to-br from-[#060a18] via-[#0b1122] to-[#19123d] text-white py-10 px-4 sm:px-6 lg:px-8">
@@ -195,15 +213,28 @@ export default function JobsPage({ jobs, loading, totalJobs, totalPages, current
             </div>
 
             {/* Job Grid */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {jobs.map((job) => (
-                <JobCard 
-                  key={job._id}
-                  job={job}
-                  onSelect={(job) => setSelectedJob(job)}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="h-48 rounded-2xl border border-white/10 bg-white/[0.03] animate-pulse p-6"></div>
+                ))}
+              </div>
+            ) : jobs.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-12 text-center text-slate-400">
+                <p className="text-base font-semibold text-white">No jobs found matching your criteria</p>
+                <p className="text-xs mt-1">Try resetting your search query or location filters.</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {jobs.map((job) => (
+                  <JobCard 
+                    key={job._id}
+                    job={job}
+                    onSelect={(job) => setSelectedJob(job)}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Pagination Controls */}
             <div className="mt-8 flex items-center justify-center gap-2">

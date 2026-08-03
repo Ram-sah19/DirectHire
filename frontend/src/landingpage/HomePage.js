@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight, ShieldCheck, Zap, Target, BookOpen, Clock, Youtube, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Zap, Target, BookOpen, Clock } from 'lucide-react';
 
 export default function HomePage({ onNavigateToJobs }) {
   return (

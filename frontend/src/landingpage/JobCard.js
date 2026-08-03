@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, ExternalLink, Clock, Building2, CheckCircle2 } from 'lucide-react';
+import { MapPin, ExternalLink, Clock } from 'lucide-react';
 
 export default function JobCard({ job, onSelect }) {
   const companyName = job.company ? job.company.name : 'Corporate Board';
